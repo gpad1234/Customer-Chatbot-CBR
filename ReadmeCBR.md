@@ -80,3 +80,6 @@ AI responses may include mistakes.
 [9] https://www.tandfonline.com/doi/full/10.1080/17517575.2016.1161239
 [10] https://thesai.org/Downloads/Volume6No11/Paper_26-Case_Based_Reasoning_Case_Representation_Methodologies.pdf
 
+ssh root@143.198.110.70 'journalctl -u cbr-chatbot -f'
+
+bash deploy/push_and_deploy.sh
