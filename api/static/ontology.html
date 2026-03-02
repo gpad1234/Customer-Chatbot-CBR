@@ -152,6 +152,21 @@
   .node.intent circle { stroke-width: 1.5; }
 
   /* Weights panel */
+  #weights-toggle {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 20;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    color: #444;
+  }
   #weights-panel {
     position: absolute;
     top: 12px;
@@ -164,13 +179,27 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     min-width: 180px;
     z-index: 10;
+    transition: opacity 0.2s;
   }
+  #weights-panel.collapsed { display: none; }
   #weights-panel h4 {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #888;
     margin-bottom: 10px;
+  }
+  @media (max-width: 600px) {
+    #weights-toggle { display: block; }
+    #weights-panel {
+      top: auto;
+      bottom: 70px;
+      right: 10px;
+      left: 10px;
+      min-width: unset;
+    }
+    #weights-panel:not(.collapsed) { display: block; }
+    #weights-panel.collapsed { display: none; }
   }
   .weight-row {
     display: flex;
@@ -206,8 +235,11 @@
 <div id="canvas">
   <svg id="tree-svg"></svg>
 
+  <!-- Weights toggle (mobile only) -->
+  <button id="weights-toggle" onclick="toggleWeights()">⚖️ Weights</button>
+
   <!-- Similarity Weights Panel -->
-  <div id="weights-panel">
+  <div id="weights-panel" class="collapsed">
     <h4>Composite Similarity Weights</h4>
     <div class="weight-row">
       <span class="weight-label">Text (spaCy)</span>
@@ -523,8 +555,28 @@ document.getElementById("resetZoom").addEventListener("click", () =>
   svg.transition().duration(400).call(zoom.transform,
     d3.zoomIdentity.translate(initialX, initialY)));
 
+// ─── Weights panel toggle (mobile) ─────────────────────────────────────
+function toggleWeights() {
+  const panel = document.getElementById("weights-panel");
+  const btn = document.getElementById("weights-toggle");
+  panel.classList.toggle("collapsed");
+  btn.textContent = panel.classList.contains("collapsed") ? "⚖️ Weights" : "✕ Close";
+}
+// On desktop, show panel by default
+if (window.innerWidth > 600) {
+  document.getElementById("weights-panel").classList.remove("collapsed");
+}
+
 // ─── Resize handler ──────────────────────────────────────────────────────
 window.addEventListener("resize", () => {
+  if (window.innerWidth > 600) {
+    document.getElementById("weights-panel").classList.remove("collapsed");
+    document.getElementById("weights-toggle").textContent = "⚖️ Weights";
+  }
+  if (window.innerWidth > 600) {
+    document.getElementById("weights-panel").classList.remove("collapsed");
+    document.getElementById("weights-toggle").textContent = "⚖️ Weights";
+  }
   setDimensions();
   svg.call(zoom.transform, d3.zoomIdentity.translate(initialX, height / 2 - treeHeight / 2 - minY));
 });
