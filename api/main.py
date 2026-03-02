@@ -70,6 +70,12 @@ def chat_ui() -> FileResponse:
     return FileResponse(_STATIC_DIR / "index.html")
 
 
+@app.get("/ontology", include_in_schema=False)
+def ontology_diagram() -> FileResponse:
+    """Serve the interactive ontology / knowledge-graph diagram."""
+    return FileResponse(_STATIC_DIR / "ontology.html")
+
+
 # ---------------------------------------------------------------------------
 # Chat query endpoint (used by the UI)
 # ---------------------------------------------------------------------------

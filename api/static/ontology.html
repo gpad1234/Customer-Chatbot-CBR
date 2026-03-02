@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CBR Ontology — Customer Support Domain</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f2f5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header .icon { font-size: 22px; }
+  header h1 { font-size: 16px; font-weight: 600; }
+  header p  { font-size: 12px; opacity: 0.8; margin-top: 1px; }
+  .back-link {
+    margin-left: auto;
+    color: rgba(255,255,255,0.85);
+    text-decoration: none;
+    font-size: 13px;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 20px;
+    padding: 5px 14px;
+    transition: background 0.15s;
+  }
+  .back-link:hover { background: rgba(255,255,255,0.15); }
+
+  /* Legend */
+  #legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #555;
+    background: #f5f5f5;
+    border-radius: 12px;
+    padding: 3px 10px 3px 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  .legend-item:hover { background: #e8eaf6; }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* Controls */
+  #controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 10;
+  }
+  .ctrl-btn {
+    width: 34px; height: 34px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    transition: background 0.15s;
+  }
+  .ctrl-btn:hover { background: #f5f7ff; }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    background: rgba(20,20,40,0.92);
+    color: #fff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    max-width: 260px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    line-height: 1.5;
+  }
+  #tooltip strong { font-size: 13px; display: block; margin-bottom: 3px; }
+  #tooltip .type-badge {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.2);
+  }
+
+  /* SVG canvas */
+  #canvas {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  svg { width: 100%; height: 100%; }
+
+  /* Tree nodes & links */
+  .link {
+    fill: none;
+    stroke: #cdd2e8;
+    stroke-width: 1.5;
+  }
+  .node circle {
+    stroke-width: 2;
+    cursor: pointer;
+    transition: r 0.2s;
+  }
+  .node circle:hover { r: 9; }
+  .node text {
+    font-size: 11px;
+    fill: #333;
+    dominant-baseline: central;
+    pointer-events: none;
+  }
+  .node.root circle  { stroke: #0d47a1; }
+  .node.category circle { stroke-width: 2; }
+  .node.intent circle { stroke-width: 1.5; }
+
+  /* Weights panel */
+  #weights-panel {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    min-width: 180px;
+    z-index: 10;
+  }
+  #weights-panel h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888;
+    margin-bottom: 10px;
+  }
+  .weight-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+  }
+  .weight-label { flex: 1; color: #444; }
+  .weight-bar-bg {
+    width: 80px; height: 8px;
+    background: #eee;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .weight-bar { height: 100%; border-radius: 4px; }
+  .weight-val { font-weight: 600; color: #1a73e8; width: 30px; text-align: right; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="icon">🧠</div>
+  <div>
+    <h1>CBR Domain Ontology</h1>
+    <p>Customer Support Knowledge Graph — 1 root · 11 categories · 25 intents</p>
+  </div>
+  <a class="back-link" href="/">← Chat UI</a>
+</header>
+
+<div id="legend"></div>
+
+<div id="canvas">
+  <svg id="tree-svg"></svg>
+
+  <!-- Similarity Weights Panel -->
+  <div id="weights-panel">
+    <h4>Composite Similarity Weights</h4>
+    <div class="weight-row">
+      <span class="weight-label">Text (spaCy)</span>
+      <div class="weight-bar-bg"><div class="weight-bar" style="width:60%;background:#1a73e8"></div></div>
+      <span class="weight-val">0.60</span>
+    </div>
+    <div class="weight-row">
+      <span class="weight-label">Intent (tree)</span>
+      <div class="weight-bar-bg"><div class="weight-bar" style="width:25%;background:#9c27b0"></div></div>
+      <span class="weight-val">0.25</span>
+    </div>
+    <div class="weight-row">
+      <span class="weight-label">Category</span>
+      <div class="weight-bar-bg"><div class="weight-bar" style="width:15%;background:#e65100"></div></div>
+      <span class="weight-val">0.15</span>
+    </div>
+    <hr style="border:none;border-top:1px solid #eee;margin:8px 0"/>
+    <div style="font-size:11px;color:#888;line-height:1.5">
+      <b>Tree distances →</b><br>
+      Same intent: <b>1.0</b><br>
+      Sibling: <b>0.6</b> (2 hops)<br>
+      Cross-category: <b>0.2</b> (4 hops)
+    </div>
+  </div>
+
+  <!-- Zoom controls -->
+  <div id="controls">
+    <button class="ctrl-btn" id="zoomIn"  title="Zoom in">+</button>
+    <button class="ctrl-btn" id="zoomOut" title="Zoom out">−</button>
+    <button class="ctrl-btn" id="resetZoom" title="Reset view">⌂</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ─── Ontology data (mirrors ontology/domain.py) ───────────────────────────
+const ONTOLOGY = {
+  name: "CustomerSupportIssue",
+  type: "root",
+  description: "Top-level concept for all customer support enquiries.",
+  children: [
+    {
+      name: "ORDER", type: "category",
+      description: "Issues related to placing, changing, cancelling or tracking orders.",
+      children: [
+        { name: "cancel_order",  type: "intent", description: "Customer wants to cancel an existing order." },
+        { name: "change_order",  type: "intent", description: "Customer wants to modify the details of an existing order." },
+        { name: "place_order",   type: "intent", description: "Customer wants to place a new order." },
+        { name: "track_order",   type: "intent", description: "Customer wants to know the current status of their order." },
+      ]
+    },
+    {
+      name: "ACCOUNT", type: "category",
+      description: "Issues related to creating, editing, switching or deleting a customer account.",
+      children: [
+        { name: "create_account", type: "intent", description: "Customer wants to register a new account." },
+        { name: "delete_account", type: "intent", description: "Customer wants to permanently remove their account." },
+        { name: "edit_account",   type: "intent", description: "Customer wants to update their account details." },
+        { name: "switch_account", type: "intent", description: "Customer wants to log in or move to a different account." },
+      ]
+    },
+    {
+      name: "SHIPPING_ADDRESS", type: "category",
+      description: "Issues related to setting up or modifying a shipping address.",
+      children: [
+        { name: "change_shipping_address",  type: "intent", description: "Customer wants to update the delivery address for an order." },
+        { name: "set_up_shipping_address",  type: "intent", description: "Customer wants to add a new shipping address to their profile." },
+      ]
+    },
+    {
+      name: "PAYMENT", type: "category",
+      description: "Issues related to payment methods or payment failures.",
+      children: [
+        { name: "check_payment_methods", type: "intent", description: "Customer wants to know which payment methods are accepted." },
+        { name: "payment_issue",         type: "intent", description: "Customer is experiencing a problem with a payment or charge." },
+      ]
+    },
+    {
+      name: "REFUND", type: "category",
+      description: "Issues related to initiating, tracking or understanding refunds.",
+      children: [
+        { name: "check_refund_policy", type: "intent", description: "Customer wants to understand the refund policy." },
+        { name: "get_refund",          type: "intent", description: "Customer wants to initiate a refund." },
+        { name: "track_refund",        type: "intent", description: "Customer wants to know the status of an in-progress refund." },
+      ]
+    },
+    {
+      name: "CANCELLATION_FEE", type: "category",
+      description: "Questions about fees charged when cancelling an order or service.",
+      children: [
+        { name: "check_cancellation_fee", type: "intent", description: "Customer wants to know if a cancellation fee applies." },
+      ]
+    },
+    {
+      name: "CONTACT", type: "category",
+      description: "Requests to reach a customer service agent or human support.",
+      children: [
+        { name: "contact_customer_service", type: "intent", description: "Customer wants to contact the support team." },
+        { name: "contact_human_agent",      type: "intent", description: "Customer explicitly requests to speak with a human agent." },
+      ]
+    },
+    {
+      name: "FEEDBACK", type: "category",
+      description: "Customer feedback including complaints and product/service reviews.",
+      children: [
+        { name: "complaint", type: "intent", description: "Customer is lodging a formal complaint." },
+        { name: "review",    type: "intent", description: "Customer wants to leave a review or rating." },
+      ]
+    },
+    {
+      name: "INVOICE", type: "category",
+      description: "Issues related to retrieving or validating invoices.",
+      children: [
+        { name: "check_invoice", type: "intent", description: "Customer wants to verify or view an invoice." },
+        { name: "get_invoice",   type: "intent", description: "Customer needs a copy of an invoice." },
+      ]
+    },
+    {
+      name: "NEWSLETTER", type: "category",
+      description: "Enquiries about newsletter subscription or unsubscription.",
+      children: [
+        { name: "newsletter_subscription", type: "intent", description: "Customer wants to subscribe or unsubscribe from a newsletter." },
+      ]
+    },
+    {
+      name: "DELIVERY", type: "category",
+      description: "Questions about delivery options, estimated delivery periods.",
+      children: [
+        { name: "delivery_options", type: "intent", description: "Customer wants to know the available delivery options." },
+        { name: "delivery_period",  type: "intent", description: "Customer wants to know how long delivery will take." },
+      ]
+    },
+  ]
+};
+
+// ─── Category colour palette ───────────────────────────────────────────────
+const CATEGORY_COLOURS = {
+  ORDER:             "#1a73e8",
+  ACCOUNT:           "#e53935",
+  SHIPPING_ADDRESS:  "#00897b",
+  PAYMENT:           "#f4511e",
+  REFUND:            "#8e24aa",
+  CANCELLATION_FEE:  "#d81b60",
+  CONTACT:           "#0288d1",
+  FEEDBACK:          "#ef6c00",
+  INVOICE:           "#558b2f",
+  NEWSLETTER:        "#6d4c41",
+  DELIVERY:          "#546e7a",
+};
+const ROOT_COLOUR = "#0d47a1";
+
+function nodeColour(d) {
+  if (d.data.type === "root") return ROOT_COLOUR;
+  if (d.data.type === "category") return CATEGORY_COLOURS[d.data.name] || "#555";
+  // intent: use parent category colour, lightened
+  const cat = d.parent ? d.parent.data.name : null;
+  return CATEGORY_COLOURS[cat] || "#888";
+}
+function nodeRadius(d) {
+  if (d.data.type === "root")     return 10;
+  if (d.data.type === "category") return 7;
+  return 5;
+}
+function nodeFill(d) {
+  if (d.data.type === "root")     return ROOT_COLOUR;
+  if (d.data.type === "category") return CATEGORY_COLOURS[d.data.name] || "#555";
+  return "#fff";
+}
+function displayName(name) {
+  return name.replace(/_/g, " ");
+}
+
+// ─── Build legend ─────────────────────────────────────────────────────────
+const legendEl = document.getElementById("legend");
+Object.entries(CATEGORY_COLOURS).forEach(([cat, col]) => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.innerHTML = `<div class="legend-dot" style="background:${col}"></div>${displayName(cat)}`;
+  item.title = "Click to highlight";
+  item.addEventListener("click", () => highlightCategory(cat));
+  legendEl.appendChild(item);
+});
+
+// ─── D3 tree layout ───────────────────────────────────────────────────────
+const svg    = d3.select("#tree-svg");
+const canvas = document.getElementById("canvas");
+
+let width, height;
+function setDimensions() {
+  width  = canvas.clientWidth;
+  height = canvas.clientHeight;
+}
+setDimensions();
+
+const g = svg.append("g");
+
+// Zoom behaviour
+const zoom = d3.zoom()
+  .scaleExtent([0.25, 3])
+  .on("zoom", e => g.attr("transform", e.transform));
+svg.call(zoom);
+
+// Horizontal tree
+const treeLayout = d3.tree().nodeSize([22, 220]);
+const root = d3.hierarchy(ONTOLOGY);
+treeLayout(root);
+
+// Shift so root is centred vertically
+const nodes = root.descendants();
+const minY = d3.min(nodes, d => d.x);
+const maxY = d3.max(nodes, d => d.x);
+const treeHeight = maxY - minY;
+
+// Initial transform: centre the tree
+const initialX = 160;
+const initialY = (height / 2) - (treeHeight / 2) - minY;
+g.attr("transform", `translate(${initialX},${initialY})`);
+svg.call(zoom.transform, d3.zoomIdentity.translate(initialX, initialY));
+
+// ─── Draw links ───────────────────────────────────────────────────────────
+g.selectAll(".link")
+  .data(root.links())
+  .join("path")
+  .attr("class", "link")
+  .attr("d", d3.linkHorizontal()
+    .x(d => d.y)
+    .y(d => d.x)
+  );
+
+// ─── Draw nodes ───────────────────────────────────────────────────────────
+const node = g.selectAll(".node")
+  .data(root.descendants())
+  .join("g")
+  .attr("class", d => `node ${d.data.type}`)
+  .attr("transform", d => `translate(${d.y},${d.x})`);
+
+node.append("circle")
+  .attr("r", nodeRadius)
+  .attr("fill", nodeFill)
+  .attr("stroke", nodeColour)
+  .attr("opacity", 0.95);
+
+// Labels — right for leaves, left for root/categories
+node.append("text")
+  .attr("dx", d => d.children ? -12 : 10)
+  .attr("text-anchor", d => d.children ? "end" : "start")
+  .attr("font-weight", d => d.data.type === "root" ? "700" : d.data.type === "category" ? "600" : "400")
+  .attr("font-size", d => d.data.type === "root" ? 13 : d.data.type === "category" ? 12 : 11)
+  .attr("fill", d => d.data.type === "intent" ? "#555" : "#222")
+  .text(d => displayName(d.data.name));
+
+// ─── Tooltip ─────────────────────────────────────────────────────────────
+const tooltip = document.getElementById("tooltip");
+
+node.on("mouseover", (event, d) => {
+  tooltip.style.opacity = "1";
+  const typeLabel = d.data.type.charAt(0).toUpperCase() + d.data.type.slice(1);
+  const catLine = d.data.type === "intent" && d.parent
+    ? `<div style="color:#aaa;font-size:11px;margin-bottom:3px">Category: ${displayName(d.parent.data.name)}</div>`
+    : "";
+  tooltip.innerHTML = `
+    <strong>${displayName(d.data.name)}</strong>
+    <span class="type-badge">${typeLabel}</span>
+    ${catLine}
+    ${d.data.description || ""}
+  `;
+})
+.on("mousemove", event => {
+  const x = event.clientX + 14;
+  const y = event.clientY - 10;
+  tooltip.style.left = `${Math.min(x, window.innerWidth - 280)}px`;
+  tooltip.style.top  = `${Math.min(y, window.innerHeight - 120)}px`;
+})
+.on("mouseleave", () => { tooltip.style.opacity = "0"; });
+
+// ─── Highlight category ──────────────────────────────────────────────────
+let activeCategory = null;
+function highlightCategory(cat) {
+  if (activeCategory === cat) {
+    activeCategory = null;
+    node.selectAll("circle").attr("opacity", 0.95);
+    g.selectAll(".link").attr("stroke", "#cdd2e8").attr("stroke-width", 1.5);
+  } else {
+    activeCategory = cat;
+    node.selectAll("circle").attr("opacity", d => {
+      if (d.data.type === "root") return 0.95;
+      if (d.data.type === "category") return d.data.name === cat ? 1 : 0.2;
+      const parentCat = d.parent ? d.parent.data.name : null;
+      return parentCat === cat ? 1 : 0.15;
+    });
+    g.selectAll(".link").attr("stroke", d => {
+      const sourceInCat =
+        (d.source.data.type === "category" && d.source.data.name === cat) ||
+        (d.source.data.type === "intent" && d.source.parent && d.source.parent.data.name === cat) ||
+        d.source.data.type === "root";
+      return sourceInCat ? CATEGORY_COLOURS[cat] || "#1a73e8" : "#e0e0e0";
+    }).attr("stroke-width", d => {
+      const sourceInCat =
+        (d.source.data.type === "category" && d.source.data.name === cat) ||
+        (d.source.data.type === "intent" && d.source.parent && d.source.parent.data.name === cat);
+      return sourceInCat ? 2.5 : 1;
+    });
+  }
+}
+
+// ─── Zoom controls ───────────────────────────────────────────────────────
+document.getElementById("zoomIn").addEventListener("click", () =>
+  svg.transition().duration(300).call(zoom.scaleBy, 1.4));
+document.getElementById("zoomOut").addEventListener("click", () =>
+  svg.transition().duration(300).call(zoom.scaleBy, 0.7));
+document.getElementById("resetZoom").addEventListener("click", () =>
+  svg.transition().duration(400).call(zoom.transform,
+    d3.zoomIdentity.translate(initialX, initialY)));
+
+// ─── Resize handler ──────────────────────────────────────────────────────
+window.addEventListener("resize", () => {
+  setDimensions();
+  svg.call(zoom.transform, d3.zoomIdentity.translate(initialX, height / 2 - treeHeight / 2 - minY));
+});
+</script>
+</body>
+</html>
