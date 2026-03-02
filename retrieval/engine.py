@@ -2,6 +2,13 @@
 
 Uses spaCy document vectors and cosine similarity.  Falls back to a simple
 token-overlap (Jaccard) score when the spaCy model has no word vectors.
+
+When the ontology package is available the engine performs a two-stage
+retrieval:
+  1. Text-only cosine / Jaccard pass to get top-k*3 candidates.
+  2. Ontology-aware composite re-ranking: intent similarity (tree distance)
+     and category exact-match are blended with the text score using the
+     weights defined in ontology.domain.SIMILARITY_WEIGHTS.
 """
 from __future__ import annotations
 
@@ -67,7 +74,13 @@ def _similarity(doc_query, doc_case, has_vectors: bool) -> float:
 # Public API
 # ---------------------------------------------------------------------------
 
-def retrieve(query: str, cases: list[Case], top_k: int = 5) -> list[tuple[Case, float]]:
+def retrieve(
+    query: str,
+    cases: list[Case],
+    top_k: int = 5,
+    query_intent: str | None = None,
+    query_category: str | None = None,
+) -> list[tuple[Case, float]]:
     """Return the *top_k* most similar cases sorted by descending similarity score.
 
     Parameters
@@ -78,6 +91,11 @@ def retrieve(query: str, cases: list[Case], top_k: int = 5) -> list[tuple[Case, 
         All cases in the case base.
     top_k:
         Maximum number of results to return.
+    query_intent:
+        Optional intent label for the incoming query (inferred by orchestrator).
+        When provided, intent tree-distance similarity is blended into the score.
+    query_category:
+        Optional category label derived from the inferred intent.
 
     Returns
     -------
@@ -99,22 +117,59 @@ def retrieve(query: str, cases: list[Case], top_k: int = 5) -> list[tuple[Case, 
             if case.case_id is not None:
                 _vector_cache[case.case_id] = vec
             # For un-keyed cases, attach vector directly on the object temporarily
-            object.__setattr__(case, "_vec", vec) if hasattr(case, "__dataclass_fields__") else setattr(case, "_vec", vec)
+            if hasattr(case, "__dataclass_fields__"):
+                object.__setattr__(case, "_vec", vec)
+            else:
+                setattr(case, "_vec", vec)
 
     doc_query = nlp(query)
 
-    scored: list[tuple[Case, float]] = []
+    # Stage 1: text-only scoring
+    text_scored: list[tuple[Case, float]] = []
     for case in cases:
         vec = _vector_cache.get(case.case_id) if case.case_id is not None else getattr(case, "_vec", None)
         if vec is None:
-            # Fallback: compute on the fly
             doc_case = nlp(case.problem)
             vec = doc_case.vector.tolist() if has_vectors else doc_case.text
         if has_vectors:
             score = _cosine(doc_query.vector, vec)
         else:
             score = _jaccard(doc_query.text, vec)
-        scored.append((case, score))
+        text_scored.append((case, score))
 
-    scored.sort(key=lambda t: t[1], reverse=True)
-    return scored[:top_k]
+    text_scored.sort(key=lambda t: t[1], reverse=True)
+
+    # Stage 2: ontology-aware composite re-ranking
+    # Try to import the ontology layer; if unavailable degrade to text-only.
+    try:
+        from ontology.similarity import (
+            composite_similarity,
+            infer_intent_from_matches,
+            infer_category_from_intent,
+        )
+        # Infer intent from top text matches when not provided by caller
+        effective_intent = query_intent
+        if effective_intent is None:
+            effective_intent = infer_intent_from_matches(text_scored, top_n=3)
+        effective_category = query_category or infer_category_from_intent(effective_intent)
+
+        # Re-score all candidates using composite similarity
+        final_scored: list[tuple[Case, float]] = []
+        for case, text_score in text_scored:
+            case_intent = (case.metadata.get("intent") or "").strip() or None
+            case_category = (case.metadata.get("category") or "").strip() or None
+            cscore = composite_similarity(
+                text_score=text_score,
+                query_intent=effective_intent,
+                case_intent=case_intent,
+                query_category=effective_category,
+                case_category=case_category,
+            )
+            final_scored.append((case, cscore))
+
+        final_scored.sort(key=lambda t: t[1], reverse=True)
+        return final_scored[:top_k]
+
+    except ImportError:
+        # Ontology package not available — return plain text ranking
+        return text_scored[:top_k]

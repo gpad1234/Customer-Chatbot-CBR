@@ -11,6 +11,11 @@ from adaptation.adapter import adapt
 from case_base.db import get_all_cases
 from case_base.models import Case
 from retrieval.engine import retrieve
+try:
+    from ontology.similarity import infer_intent_from_matches, infer_category_from_intent
+    _ONTOLOGY_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _ONTOLOGY_AVAILABLE = False
 
 
 @dataclass
@@ -49,7 +54,23 @@ def query(problem: str, top_k: int = 5, min_score: float = 0.0) -> CBRResponse:
             top_matches=[],
         )
 
-    top_matches = retrieve(problem, cases, top_k=top_k)
+    # Stage 1: text-only pass to get candidates for intent inference
+    text_matches = retrieve(problem, cases, top_k=max(top_k, 5))
+
+    # Infer intent / category from top text matches via ontology
+    query_intent: str | None = None
+    query_category: str | None = None
+    if _ONTOLOGY_AVAILABLE:
+        query_intent = infer_intent_from_matches(text_matches, top_n=3)
+        query_category = infer_category_from_intent(query_intent)
+
+    # Stage 2: ontology-composite re-ranked retrieval
+    top_matches = retrieve(
+        problem, cases,
+        top_k=top_k,
+        query_intent=query_intent,
+        query_category=query_category,
+    )
     best_case, best_score = top_matches[0] if top_matches else (None, 0.0)
 
     if best_case is None or best_score < min_score:

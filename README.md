@@ -155,6 +155,10 @@ pytest tests/ -v
 
 ---
 
+## Ontology & Knowledge Graph
+
+Sprint 2 adds an ontology-aware retrieval layer. See [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the full design, concept hierarchy, composite similarity formula, and extension guide.
+
 ## Roadmap
 
 - [ ] `GET /cases` with pagination and keyword search

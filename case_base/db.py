@@ -34,9 +34,15 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Create the cases table if it does not already exist."""
+    """Create the cases table and the ontology knowledge graph if they do not exist."""
     with _connect() as conn:
         conn.execute(_CREATE_TABLE)
+    # Initialise the ontology knowledge graph in the same DB
+    try:
+        from ontology.graph import init_kg
+        init_kg()
+    except Exception:  # pragma: no cover
+        pass  # KG is optional — never block case-base startup
 
 
 def insert_case(case: Case) -> int:

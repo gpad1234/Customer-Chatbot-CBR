@@ -48,3 +48,35 @@ AI responses may include mistakes.
 
 
 Server running at http://127.0.0.1:8000/docs with all 26,872 Bitext cases loaded and vector cache warm. To avoid the port conflict in future, use --reload only during development and always clear the port first with kill $(lsof -ti:8000).
+
+
+Yes, Case-Based Reasoning (CBR) can and often does use ontologies to significantly enhance its capabilities. Integrating ontologies provides a formal, semantic structure to define case features, relationships, and domain knowledge, leading to better case representation, improved retrieval, and more accurate adaptation of solutions. [1, 2, 3]  
+Key benefits and applications of Ontology-Based Case-Based Reasoning (OBCBR) include: 
+
+• Enhanced Knowledge Representation: Ontologies allow for a more comprehensive representation of a domain's concepts and relationships. 
+• Improved Retrieval Accuracy: By using Semantic Web technologies (like OWL), systems can better understand the context and relationships between cases, rather than relying solely on keyword matching. 
+• Better Semantic Search: Ontologies facilitate semantic retrieval, which is crucial for finding similar cases, particularly in complex domains like medicine or emergency response. 
+• Structured Case Base: Cases can be stored as instances within an ontology, allowing for easier, structured, and more efficient management of past experiences. 
+• Improved Adaptation: Semantic knowledge provided by ontologies can be used to adapt past solutions to fit new, slightly different problems. [1, 3, 4, 5, 6, 7, 8]  
+
+Examples of Use: 
+
+• Medical Diagnosis: A fuzzy ontology-based CBR system was used for diagnosing stomach-related illnesses, improving accuracy by leveraging domain-specific medical knowledge. 
+• Emergency Response: An ontology-supported CBR (OS-CBR) system was implemented to assist in emergency, or crisis management. 
+• Project Management: An enterprise architecture ontology (e.g., ArchiMEO) can be used to retrieve relevant historical project data. [3, 6, 9]  
+
+In summary, ontologies bridge the gap between structured, domain-specific knowledge and the flexible, experience-based nature of CBR. [10]  
+
+AI responses may include mistakes.
+
+[1] https://ceur-ws.org/Vol-3723/paper20.pdf
+[2] https://link.springer.com/chapter/10.1007/978-3-031-22938-1_10
+[3] https://www.sciencedirect.com/science/article/abs/pii/S0167923613000043
+[4] https://pmc.ncbi.nlm.nih.gov/articles/PMC11500847/
+[5] https://link.springer.com/article/10.1007/s10506-008-9070-8
+[6] https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0309722
+[7] https://www.sciencedirect.com/science/article/pii/S0167923613000043
+[8] https://link.springer.com/article/10.1007/s11423-025-10488-9
+[9] https://www.tandfonline.com/doi/full/10.1080/17517575.2016.1161239
+[10] https://thesai.org/Downloads/Volume6No11/Paper_26-Case_Based_Reasoning_Case_Representation_Methodologies.pdf
+

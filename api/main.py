@@ -41,7 +41,7 @@ _STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    init_db()  # also seeds the ontology KG
     # Pre-warm the retrieval vector cache so the first real query is fast
     from case_base.db import get_all_cases
     from retrieval.engine import retrieve
