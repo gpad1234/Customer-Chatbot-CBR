@@ -134,10 +134,15 @@ curl -X POST http://localhost:8000/query \
 
 ## Loading the Sample Case Base
 
+See [data/DATA_SOURCES.md](data/DATA_SOURCES.md) for the full ingestion guide (data sources, column mappings, managing the DB, and adding a custom CSV).
+
 ```bash
 # Ingest the bundled Bitext customer support dataset (~26 k cases)
 source .venv/bin/activate
 python data/ingest_bitext.py
+
+# Or load a subset for faster startup
+python data/ingest_bitext.py --limit 1000
 ```
 
 ---
