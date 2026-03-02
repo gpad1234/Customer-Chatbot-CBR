@@ -7,11 +7,11 @@ set -euo pipefail
 
 REPO_URL="https://github.com/gpad1234/Customer-Chatbot-CBR.git"
 APP_DIR="/opt/cbr-chatbot"
-PYTHON="python3.11"
+PYTHON="python3"
 
 echo "==> Updating packages..."
 apt-get update -q
-apt-get install -y -q python3.11 python3.11-venv python3-pip git nginx curl
+apt-get install -y -q python3 python3-venv python3-pip git nginx curl
 
 echo "==> Cloning repository to $APP_DIR..."
 if [ -d "$APP_DIR/.git" ]; then
